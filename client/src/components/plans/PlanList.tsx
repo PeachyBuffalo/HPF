@@ -1,44 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { fetchHealthcarePlans } from '../../services/api';
-import { HealthcarePlan } from '../../types/api.types';
+import React, { useEffect, useState } from 'react';
+import { getPlans } from '../../services/api';
 
-const PlanList: React.FC = () => {
-  const [plans, setPlans] = useState<HealthcarePlan[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
+interface Plan {
+  id: number;
+  name: string;
+  provider: string;
+  monthly_premium: number;
+  deductible: number;
+}
+
+const PlanList = () => {
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const loadPlans = async (): Promise<void> => {
+    const fetchPlans = async () => {
       try {
-        const data = await fetchHealthcarePlans();
+        const data = await getPlans();
         setPlans(data);
-        setLoading(false);
       } catch (err) {
-        setError('Failed to load healthcare plans');
-        setLoading(false);
+        setError('Failed to load plans');
+        console.error('Error fetching plans:', err);
       }
     };
 
-    loadPlans();
+    fetchPlans();
   }, []);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div className="error">{error}</div>;
+  if (error) return <div className="error-message">{error}</div>;
 
   return (
     <div className="plan-list">
-      <h2>Available Healthcare Plans</h2>
-      {plans.map((plan) => (
-        <div key={plan.id} className="plan-card">
-          <h3>{plan.name}</h3>
-          <p>Provider: {plan.provider}</p>
-          <p>Coverage Type: {plan.coverage_type}</p>
-          <p>Monthly Premium: ${plan.monthly_premium}</p>
-          <p>Deductible: ${plan.deductible}</p>
-          <p>Max Out of Pocket: ${plan.max_out_of_pocket}</p>
-          {plan.description && <p>Description: {plan.description}</p>}
-        </div>
-      ))}
+      <h2>Available Plans</h2>
+      <div className="plans">
+        {plans.map(plan => (
+          <div key={plan.id} className="plan-card">
+            <h3>{plan.name}</h3>
+            <p>Provider: {plan.provider}</p>
+            <p>Monthly Premium: ${plan.monthly_premium}</p>
+            <p>Deductible: ${plan.deductible}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

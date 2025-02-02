@@ -1,65 +1,68 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { login } from '../../services/api';
-import { LoginCredentials } from '../../types/api.types';
+import { useAuth } from '../../context/AuthContext';
 
 interface LoginFormProps {
-  onLogin: () => void;
+  onSuccess?: () => void;
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
-  const [credentials, setCredentials] = useState<LoginCredentials>({
-    username: '',
-    password: ''
-  });
-  const [error, setError] = useState<string>('');
+const LoginForm = ({ onSuccess }: LoginFormProps) => {
+  const [username, setUsername] = useState('test@example.com'); // Pre-fill for testing
+  const [password, setPassword] = useState('password123'); // Pre-fill for testing
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const { name, value } = e.target;
-    setCredentials(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setIsLoading(true);
+    
     try {
-      const response = await login(credentials);
-      localStorage.setItem('token', response.access_token);
-      onLogin();
+      console.log('Attempting login with:', { username, password }); // Debug log
+      const token = await login(username, password);
+      console.log('Received token:', token); // Debug log
+      authLogin(token);
+      if (onSuccess) {
+        onSuccess();
+      }
+      navigate('/plans');
     } catch (err) {
-      setError('Invalid username or password');
+      console.error('Login error:', err);
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="login-form">
       <h2>Login</h2>
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error-message">{error}</div>}
       <form onSubmit={handleSubmit}>
         <div>
-          <label htmlFor="username">Username:</label>
           <input
-            type="text"
-            id="username"
-            name="username"
-            value={credentials.username}
-            onChange={handleChange}
+            type="email"
+            placeholder="Email"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             required
           />
         </div>
         <div>
-          <label htmlFor="password">Password:</label>
           <input
             type="password"
-            id="password"
-            name="password"
-            value={credentials.password}
-            onChange={handleChange}
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             required
           />
         </div>
-        <button type="submit">Login</button>
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? 'Logging in...' : 'Login'}
+        </button>
       </form>
     </div>
   );
