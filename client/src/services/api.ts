@@ -1,53 +1,49 @@
-import axios, { AxiosInstance } from 'axios';
-import { HealthcarePlan, UserPreferences, AuthResponse, LoginCredentials } from '../types/api.types';
+import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_URL = 'http://localhost:8000/api/v1';
 
-const api: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
+export const login = async (username: string, password: string) => {
   const formData = new FormData();
-  formData.append('username', credentials.username);
-  formData.append('password', credentials.password);
+  formData.append('username', username);
+  formData.append('password', password);
   
-  const response = await axios.post<AuthResponse>(`${API_BASE_URL}/token`, formData);
-  return response.data;
+  try {
+    const response = await axios.post(`${API_URL}/token`, formData, {
+      headers: {
+        'Accept': 'application/json',
+      }
+    });
+    
+    console.log('Login response:', response.data); // Debug log
+    
+    if (response.data.access_token) {
+      const token = response.data.access_token;
+      localStorage.setItem('token', token);
+      return token;
+    } else {
+      throw new Error('No access token in response');
+    }
+  } catch (error) {
+    console.error('Login error details:', error); // Debug log
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data?.detail || 'Login failed');
+    }
+    throw error;
+  }
 };
 
-export const fetchHealthcarePlans = async (filters = {}): Promise<HealthcarePlan[]> => {
-  const response = await api.get<HealthcarePlan[]>('/plans/', { params: filters });
-  return response.data;
-};
-
-export const getHealthcarePlan = async (planId: number): Promise<HealthcarePlan> => {
-  const response = await api.get<HealthcarePlan>(`/plans/${planId}`);
-  return response.data;
-};
-
-export const ratePlan = async (planId: number, rating: number, review?: string) => {
-  const response = await api.post(`/plans/${planId}/rate`, { rating, review });
-  return response.data;
-};
-
-export const getRecommendedPlans = async (preferences: UserPreferences): Promise<HealthcarePlan[]> => {
-  const response = await api.post<HealthcarePlan[]>('/recommend/', preferences);
-  return response.data;
-};
-
-export const updateUserPreferences = async (preferences: UserPreferences) => {
-  const response = await api.post('/preferences/', preferences);
-  return response.data;
+export const getPlans = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_URL}/plans`, {
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching plans:', error);
+    throw error;
+  }
 }; 
