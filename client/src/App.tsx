@@ -1,71 +1,40 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import LoginForm from './components/auth/LoginForm';
 import PlanList from './components/plans/PlanList';
-import PlanRecommendation from './components/plans/PlanRecommendation';
-import Navigation from './components/common/Navigation';
+import Modal from './components/common/Modal';
 import './App.css';
 
-const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    !!localStorage.getItem('token')
-  );
-
-  const handleLogin = (): void => {
-    setIsAuthenticated(true);
-  };
-
-  const handleLogout = (): void => {
-    localStorage.removeItem('token');
-    setIsAuthenticated(false);
-  };
+function App() {
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isPlansOpen, setIsPlansOpen] = useState(false);
 
   return (
-    <Router>
-      <div className="App">
-        <Navigation 
-          isAuthenticated={isAuthenticated} 
-          onLogout={handleLogout} 
-        />
-        
-        <main>
-          <Routes>
-            <Route 
-              path="/login" 
-              element={
-                !isAuthenticated ? (
-                  <LoginForm onLogin={handleLogin} />
-                ) : (
-                  <Navigate to="/dashboard" />
-                )
-              } 
-            />
-            <Route 
-              path="/plans" 
-              element={
-                isAuthenticated ? (
-                  <PlanList />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              } 
-            />
-            <Route 
-              path="/recommend" 
-              element={
-                isAuthenticated ? (
-                  <PlanRecommendation />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              } 
-            />
-            <Route path="/" element={<Navigate to="/plans" />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
-  );
-};
+    <AuthProvider>
+      <Router>
+        <div className="App">
+          <header className="App-header">
+            <h1>Healthcare Plan Finder</h1>
+            <nav>
+              <ul>
+                <li><button onClick={() => setIsPlansOpen(true)}>View Plans</button></li>
+                <li><button onClick={() => setIsLoginOpen(true)}>Login</button></li>
+              </ul>
+            </nav>
+          </header>
 
-export default App; 
+          <Modal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)}>
+            <LoginForm onSuccess={() => setIsLoginOpen(false)} />
+          </Modal>
+
+          <Modal isOpen={isPlansOpen} onClose={() => setIsPlansOpen(false)}>
+            <PlanList />
+          </Modal>
+        </div>
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;
