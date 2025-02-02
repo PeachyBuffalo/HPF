@@ -42,17 +42,31 @@ async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
+    # Add debug logging
+    print(f"Login attempt for user: {form_data.username}")
+    
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.password_hash):
+    if not user:
+        print(f"User not found: {form_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    if not verify_password(form_data.password, user.password_hash):
+        print(f"Invalid password for user: {form_data.username}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
+    print(f"Login successful for user: {form_data.username}")
     return {"access_token": access_token, "token_type": "bearer"}
 
 async def get_current_user(
@@ -78,17 +92,32 @@ async def get_current_user(
 
 @router.post("/register")
 def register_user(db: Session = Depends(get_db)):
+    # Add debug logging
+    print("Attempting to create test user")
+    
     # Check if user already exists
     existing_user = db.query(models.User).filter(models.User.username == "test@example.com").first()
     if existing_user:
+        print("Test user already exists")
         return {"message": "Test user already exists"}
     
-    # Create test user
+    # Create test user with hashed password
+    hashed_password = get_password_hash("password123")
     db_user = models.User(
         username="test@example.com",
-        password_hash=get_password_hash("password123")
+        email="test@example.com",  # Add email field
+        password_hash=hashed_password,
+        first_name="Test",  # Add required fields
+        last_name="User"
     )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return {"message": "Test user created successfully"} 
+    
+    try:
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        print("Test user created successfully")
+        return {"message": "Test user created successfully"}
+    except Exception as e:
+        print(f"Error creating test user: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e)) 
